@@ -7,7 +7,7 @@ export default function ChatMessage({ message, index, onCopy, copiedStates }) {
   const formatContent = (content) => {
     // Split content by code blocks (```...```)
     const parts = content.split(/(```[\s\S]*?```)/g)
-    
+
     return parts.map((part, partIndex) => {
       if (part.startsWith('```') && part.endsWith('```')) {
         // This is a code block
@@ -16,7 +16,7 @@ export default function ChatMessage({ message, index, onCopy, copiedStates }) {
         const language = lines[0] && !lines[0].includes(' ') ? lines[0] : ''
         const code = language ? lines.slice(1).join('\n') : codeContent
         const copyId = `${index}-${partIndex}`
-        
+
         return (
           <div key={partIndex} className="my-3 bg-gray-900 rounded-lg overflow-hidden code-block">
             <div className="flex items-center justify-between px-3 py-2 bg-gray-800 text-gray-300 text-xs">
@@ -70,14 +70,116 @@ export default function ChatMessage({ message, index, onCopy, copiedStates }) {
                   </span>
                 )
               }
-              return <span key={inlineIndex}>{inlinePart}</span>
+              return <span key={inlineIndex}>{formatMarkdownText(inlinePart)}</span>
             })}
           </span>
         )
       } else {
-        // Regular text
-        return <span key={partIndex}>{part}</span>
+        // Regular text with markdown formatting
+        return <span key={partIndex}>{formatMarkdownText(part)}</span>
       }
+    })
+  }
+
+  const formatMarkdownText = (text) => {
+    if (!text) return text
+
+    // Process text line by line to handle different markdown elements
+    const lines = text.split('\n')
+    const result = []
+    let currentIndex = 0
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+
+      // Headers (### text)
+      if (line.match(/^#{1,6}\s/)) {
+        const level = line.match(/^#{1,6}/)[0].length
+        const headerText = line.replace(/^#{1,6}\s/, '')
+        const headerClasses = {
+          1: 'text-lg font-bold mt-3 mb-2 text-gray-900',
+          2: 'text-base font-bold mt-3 mb-2 text-gray-900',
+          3: 'text-sm font-bold mt-2 mb-1 text-gray-900',
+          4: 'text-sm font-semibold mt-2 mb-1 text-gray-800',
+          5: 'text-xs font-semibold mt-1 mb-1 text-gray-800',
+          6: 'text-xs font-medium mt-1 mb-1 text-gray-700'
+        }
+
+        result.push(
+          <div key={currentIndex++} className={headerClasses[level]}>
+            {formatInlineMarkdown(headerText)}
+          </div>
+        )
+        continue
+      }
+
+      // Numbered lists (1. text)
+      if (line.match(/^\d+\.\s/)) {
+        result.push(
+          <div key={currentIndex++} className="ml-4 my-1 flex items-start">
+            <span className="font-medium text-blue-600 mr-2 flex-shrink-0">
+              {line.match(/^\d+\./)[0]}
+            </span>
+            <span>{formatInlineMarkdown(line.replace(/^\d+\.\s/, ''))}</span>
+          </div>
+        )
+        continue
+      }
+
+      // Bullet points (- text)
+      if (line.match(/^-\s/)) {
+        result.push(
+          <div key={currentIndex++} className="ml-4 my-1 flex items-start">
+            <span className="text-blue-600 mr-2 flex-shrink-0">•</span>
+            <span>{formatInlineMarkdown(line.slice(2))}</span>
+          </div>
+        )
+        continue
+      }
+
+      // Regular text line
+      if (line.trim()) {
+        result.push(
+          <div key={currentIndex++} className="my-1">
+            {formatInlineMarkdown(line)}
+          </div>
+        )
+      } else {
+        // Empty line - add spacing
+        result.push(<div key={currentIndex++} className="h-2" />)
+      }
+    }
+
+    return result
+  }
+
+  const formatInlineMarkdown = (text) => {
+    if (!text) return text
+
+    // Split by bold and italic patterns
+    const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g)
+
+    return parts.map((part, index) => {
+      // Bold text (**text**)
+      if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+        return (
+          <strong key={index} className="font-semibold text-gray-900">
+            {part.slice(2, -2)}
+          </strong>
+        )
+      }
+
+      // Italic text (*text*) - but not if it's part of **text**
+      if (part.startsWith('*') && part.endsWith('*') && part.length > 2 && !part.startsWith('**')) {
+        return (
+          <em key={index} className="italic text-gray-800">
+            {part.slice(1, -1)}
+          </em>
+        )
+      }
+
+      // Regular text
+      return <span key={index}>{part}</span>
     })
   }
 

@@ -65,9 +65,16 @@ You can also use inline code like \`useState\` or \`useEffect\` for hooks.`,
     },
     {
       type: 'assistant',
-      content: `There are several ways to add CSS styling to React components:
+      content: `### Explanation of CSS Styling Options:
 
-## 1. CSS Modules
+There are several ways to add CSS styling to React components:
+
+1. **CSS Modules**: Scoped CSS files that prevent naming conflicts
+2. **Tailwind CSS**: Utility-first CSS framework (recommended)
+3. **Styled Components**: CSS-in-JS solution
+4. **Regular CSS**: Traditional stylesheets
+
+### CSS Modules Example:
 \`\`\`css
 /* MyComponent.module.css */
 .component {
@@ -94,7 +101,7 @@ function MyComponent() {
 }
 \`\`\`
 
-## 2. Tailwind CSS (recommended)
+### Tailwind CSS (Recommended):
 \`\`\`jsx
 function MyComponent() {
   return (
@@ -105,7 +112,16 @@ function MyComponent() {
 }
 \`\`\`
 
-Use \`className\` instead of \`class\` in JSX!`,
+### Additional Tips:
+- **Important**: Use \`className\` instead of \`class\` in JSX!
+- **Performance**: Tailwind CSS provides excellent performance with purging
+- **Maintainability**: CSS Modules help with component isolation
+
+### Best Practices:
+1. Choose one styling approach and stick with it
+2. Use responsive design classes like \`sm:\`, \`md:\`, \`lg:\`
+3. Leverage CSS custom properties for theming
+4. Consider accessibility when choosing colors and fonts`,
       timestamp: new Date(),
       model: 'gpt-4o-mini'
     }

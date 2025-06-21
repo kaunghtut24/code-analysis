@@ -112,11 +112,52 @@
   word-wrap: break-word;
   overflow-wrap: break-word;
   hyphens: auto;
+  line-height: 1.6;
 }
 
 .chat-message pre {
   white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+/* Markdown formatting in chat */
+.chat-message h1, .chat-message h2, .chat-message h3,
+.chat-message h4, .chat-message h5, .chat-message h6 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.chat-message h1 { font-size: 1.25rem; }
+.chat-message h2 { font-size: 1.125rem; }
+.chat-message h3 { font-size: 1rem; }
+
+.chat-message strong {
+  font-weight: 600;
+  color: inherit;
+}
+
+.chat-message em {
+  font-style: italic;
+  color: inherit;
+}
+
+.chat-message ul, .chat-message ol {
+  margin: 0.5rem 0;
+  padding-left: 1rem;
+}
+
+.chat-message li {
+  margin: 0.25rem 0;
+}
+
+/* Better spacing for lists and paragraphs */
+.chat-message > div {
+  margin-bottom: 0.5rem;
+}
+
+.chat-message > div:last-child {
+  margin-bottom: 0;
 }
 
 /* Mobile scroll improvements */
