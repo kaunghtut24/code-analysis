@@ -76,7 +76,12 @@ npm install
 ```bash
 cd backend
 # Activate virtual environment if not already active
-python src/app.py
+# Windows
+venv\Scripts\activate
+# macOS/Linux
+source venv/bin/activate
+
+python src/main.py
 ```
 
 2. **Start the Frontend**
@@ -136,21 +141,64 @@ npm run dev
 3. Navigate folders and select files
 4. Analyze directly from repository files
 
+## 🏗️ Architecture & Refactoring
+
+This codebase has been extensively refactored for maintainability and modularity:
+
+### Key Improvements
+- **Component Modularity**: Large components broken into focused, reusable modules
+- **Custom Hooks**: Shared logic extracted into reusable React hooks
+- **Service Layer**: API communication centralized in dedicated services
+- **Backend Modules**: Monolithic backend routes split into specialized modules
+
+### Refactoring Results
+- **87% reduction** in largest backend file (915 → 120 lines)
+- **78% reduction** in largest frontend component (834 → 180 lines)
+- **14 focused components** instead of 3 monolithic ones
+- **5 custom hooks** for shared functionality
+- **3 service modules** for API communication
+
+See [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) for detailed documentation.
+
 ## 🛠️ Development
 
 ### Project Structure
 ```
 code-analysis/
-├── backend/           # Flask API server
+├── backend/                    # Flask API server
 │   ├── src/
-│   │   ├── app.py    # Main application
-│   │   └── routes/   # API endpoints
+│   │   ├── llm/               # LLM integration modules
+│   │   │   ├── providers.py   # AI provider configurations
+│   │   │   ├── analysis.py    # Code analysis logic
+│   │   │   ├── chat.py        # Chat functionality
+│   │   │   ├── prompts.py     # Analysis prompts
+│   │   │   └── error_handling.py
+│   │   ├── routes/            # API endpoints
+│   │   │   └── llm.py         # Refactored LLM routes
+│   │   ├── app.py            # Main application
+│   │   └── main.py           # Application entry point
 │   └── requirements.txt
-├── frontend/          # React application
+├── frontend/                  # React application
 │   ├── src/
-│   │   ├── components/
-│   │   └── lib/
+│   │   ├── components/        # UI components
+│   │   │   ├── analyzer/      # Code analysis components
+│   │   │   ├── settings/      # Settings components
+│   │   │   ├── repository/    # Repository components
+│   │   │   ├── CodeAnalyzer.jsx
+│   │   │   ├── Settings.jsx
+│   │   │   └── RepositoryExplorer.jsx
+│   │   ├── hooks/             # Custom React hooks
+│   │   │   ├── useApiKeys.js
+│   │   │   ├── useLLMConfig.js
+│   │   │   └── useLocalStorage.js
+│   │   ├── services/          # API communication
+│   │   │   ├── codeAnalysisService.js
+│   │   │   ├── settingsService.js
+│   │   │   └── repositoryService.js
+│   │   ├── utils/             # Utility functions
+│   │   └── lib/               # UI library components
 │   └── package.json
+├── REFACTORING_SUMMARY.md     # Detailed refactoring documentation
 └── README.md
 ```
 
@@ -159,7 +207,11 @@ code-analysis/
 #### Backend
 ```bash
 cd backend
-python src/app.py          # Start development server
+# Activate virtual environment first
+venv\Scripts\activate      # Windows
+source venv/bin/activate   # macOS/Linux
+
+python src/main.py         # Start development server
 pip install -r requirements.txt  # Install dependencies
 ```
 

@@ -81,6 +81,109 @@ export default function ChatMessage({ message, index, onCopy, copiedStates }) {
     })
   }
 
+  const parseTable = (lines, startIndex) => {
+    const tableLines = []
+    let i = startIndex
+
+    // More flexible table detection - collect lines that contain pipes
+    while (i < lines.length) {
+      const line = lines[i].trim()
+
+      // Check if this looks like a table line (contains |)
+      if (line.includes('|')) {
+        tableLines.push(line)
+        i++
+      } else if (line === '') {
+        // Empty line - check if next line is also a table line
+        if (i + 1 < lines.length && lines[i + 1].trim().includes('|')) {
+          i++
+          continue
+        } else {
+          break
+        }
+      } else {
+        break
+      }
+    }
+
+    if (tableLines.length < 2) {
+      return { table: null, nextIndex: startIndex + 1 }
+    }
+
+    // Find the header row (first non-separator row)
+    let headerRowIndex = 0
+    let separatorRowIndex = -1
+
+    // Look for separator row (contains dashes)
+    for (let j = 0; j < tableLines.length; j++) {
+      if (tableLines[j].includes('-') && tableLines[j].includes('|')) {
+        separatorRowIndex = j
+        break
+      }
+    }
+
+    // If we found a separator, header is the row before it
+    if (separatorRowIndex > 0) {
+      headerRowIndex = separatorRowIndex - 1
+    }
+
+    const headerRow = tableLines[headerRowIndex]
+
+    // Parse headers - split by | and clean up
+    let headers = headerRow.split('|')
+
+    // Remove empty first/last elements if they exist
+    if (headers[0].trim() === '') headers = headers.slice(1)
+    if (headers[headers.length - 1].trim() === '') headers = headers.slice(0, -1)
+
+    // Clean up header text
+    headers = headers.map(h => h.trim())
+
+    if (headers.length === 0) {
+      return { table: null, nextIndex: startIndex + 1 }
+    }
+
+    // Parse data rows (skip header and separator)
+    const rows = []
+    const dataStartIndex = separatorRowIndex >= 0 ? separatorRowIndex + 1 : headerRowIndex + 1
+
+    for (let j = dataStartIndex; j < tableLines.length; j++) {
+      const row = tableLines[j]
+      if (row.includes('|')) {
+        let cells = row.split('|')
+
+        // Remove empty first/last elements if they exist
+        if (cells[0].trim() === '') cells = cells.slice(1)
+        if (cells[cells.length - 1].trim() === '') cells = cells.slice(0, -1)
+
+        // Clean up cell text
+        cells = cells.map(c => c.trim())
+
+        // Only add rows that have the right number of columns (or close to it)
+        if (cells.length >= headers.length - 1 && cells.length <= headers.length + 1) {
+          // Pad with empty cells if needed
+          while (cells.length < headers.length) {
+            cells.push('')
+          }
+          // Truncate if too many cells
+          if (cells.length > headers.length) {
+            cells = cells.slice(0, headers.length)
+          }
+          rows.push(cells)
+        }
+      }
+    }
+
+    if (rows.length === 0) {
+      return { table: null, nextIndex: startIndex + 1 }
+    }
+
+    return {
+      table: { headers, rows },
+      nextIndex: i
+    }
+  }
+
   const formatMarkdownText = (text) => {
     if (!text) return text
 
@@ -88,9 +191,47 @@ export default function ChatMessage({ message, index, onCopy, copiedStates }) {
     const lines = text.split('\n')
     const result = []
     let currentIndex = 0
+    let i = 0
 
-    for (let i = 0; i < lines.length; i++) {
+    while (i < lines.length) {
       const line = lines[i]
+
+      // Check for tables (lines with | characters) - more flexible detection
+      if (line.includes('|')) {
+        const tableResult = parseTable(lines, i)
+        if (tableResult.table) {
+          result.push(
+            <div key={currentIndex++} className="my-4 overflow-x-auto">
+              <table className="min-w-full border-collapse border border-gray-300 text-xs sm:text-sm">
+                <thead>
+                  <tr className="bg-gray-50">
+                    {tableResult.table.headers.map((header, headerIndex) => (
+                      <th key={headerIndex} className="border border-gray-300 px-2 py-2 text-left font-semibold text-gray-900">
+                        {formatInlineMarkdown(header)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableResult.table.rows.map((row, rowIndex) => (
+                    <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      {row.map((cell, cellIndex) => (
+                        <td key={cellIndex} className="border border-gray-300 px-2 py-2 text-gray-800 align-top">
+                          <div className="whitespace-pre-wrap break-words">
+                            {formatInlineMarkdown(cell)}
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+          i = tableResult.nextIndex
+          continue
+        }
+      }
 
       // Headers (### text)
       if (line.match(/^#{1,6}\s/)) {
@@ -110,6 +251,7 @@ export default function ChatMessage({ message, index, onCopy, copiedStates }) {
             {formatInlineMarkdown(headerText)}
           </div>
         )
+        i++
         continue
       }
 
@@ -123,6 +265,7 @@ export default function ChatMessage({ message, index, onCopy, copiedStates }) {
             <span>{formatInlineMarkdown(line.replace(/^\d+\.\s/, ''))}</span>
           </div>
         )
+        i++
         continue
       }
 
@@ -134,6 +277,27 @@ export default function ChatMessage({ message, index, onCopy, copiedStates }) {
             <span>{formatInlineMarkdown(line.slice(2))}</span>
           </div>
         )
+        i++
+        continue
+      }
+
+      // Horizontal rules (--- or ***)
+      if (line.match(/^(-{3,}|\*{3,})$/)) {
+        result.push(
+          <hr key={currentIndex++} className="my-4 border-gray-300" />
+        )
+        i++
+        continue
+      }
+
+      // Blockquotes (> text)
+      if (line.match(/^>\s/)) {
+        result.push(
+          <div key={currentIndex++} className="ml-4 my-2 pl-3 border-l-4 border-blue-300 bg-blue-50 py-2">
+            <span className="text-gray-700 italic">{formatInlineMarkdown(line.slice(2))}</span>
+          </div>
+        )
+        i++
         continue
       }
 
@@ -148,6 +312,7 @@ export default function ChatMessage({ message, index, onCopy, copiedStates }) {
         // Empty line - add spacing
         result.push(<div key={currentIndex++} className="h-2" />)
       }
+      i++
     }
 
     return result
