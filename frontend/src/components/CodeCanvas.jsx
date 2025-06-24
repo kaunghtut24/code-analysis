@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useToastNotifications } from "@/hooks/useToastNotifications";
+import { settingsService } from "@/services/settingsService";
 import MonacoEditor from "./MonacoEditor";
 import AISuggestionProvider from "./AISuggestionProvider";
 import DiffViewer from "./DiffViewer";
@@ -86,7 +87,7 @@ public class Fibonacci {
         if (n <= 1) return n;
         return fibonacci(n - 1) + fibonacci(n - 2);
     }
-    
+
     public static void main(String[] args) {
         System.out.println(fibonacci(10));
     }
@@ -107,6 +108,7 @@ export default function CodeCanvas({ setSidebarOpen }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [layoutMode, setLayoutMode] = useState("split"); // 'split', 'editor-only', 'suggestions-only'
   const [savedCode, setSavedCode] = useState("");
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const { showToast } = useToastNotifications();
 
   // Initialize with default code
@@ -286,6 +288,47 @@ export default function CodeCanvas({ setSidebarOpen }) {
     return extensionMap[ext];
   };
 
+  // Test API connection
+  const handleTestConnection = async () => {
+    setIsTestingConnection(true);
+    try {
+      const settings = settingsService.loadSettings();
+      const provider = settings.selectedProvider;
+      const apiKey = settings.apiKeys[provider];
+
+      if (!apiKey && provider !== "ollama") {
+        showToast("Please set up your API key in Settings first", "error");
+        return;
+      }
+
+      const testData = {
+        provider,
+        model: settings.selectedModel,
+        api_key: apiKey,
+        base_url: settings.customBaseUrl || undefined,
+      };
+
+      const result = await settingsService.testConnection(testData);
+
+      if (result.success) {
+        showToast(
+          `✅ Connection successful! Using ${provider}/${testData.model}`,
+          "success",
+        );
+      } else {
+        showToast(
+          `❌ Connection failed: ${result.error || "Unknown error"}`,
+          "error",
+        );
+      }
+    } catch (error) {
+      console.error("Connection test failed:", error);
+      showToast(`❌ Connection test failed: ${error.message}`, "error");
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   // Toggle layout modes
   const toggleLayout = () => {
     const modes = ["split", "editor-only", "suggestions-only"];
@@ -399,6 +442,20 @@ export default function CodeCanvas({ setSidebarOpen }) {
             ) : (
               <Maximize2 className="w-4 h-4" />
             )}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleTestConnection}
+            disabled={isTestingConnection}
+          >
+            {isTestingConnection ? (
+              <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+            ) : (
+              <Settings className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline ml-1">Test</span>
           </Button>
 
           <Button
