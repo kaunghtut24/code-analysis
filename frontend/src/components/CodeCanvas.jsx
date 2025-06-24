@@ -337,6 +337,30 @@ export default function CodeCanvas({ setSidebarOpen }) {
     setLayoutMode(modes[nextIndex]);
   };
 
+  // Get API status color
+  const getAPIStatusColor = () => {
+    const settings = settingsService.loadSettings();
+    const provider = settings.selectedProvider;
+    const apiKey = settings.apiKeys[provider];
+
+    if (!apiKey && provider !== "ollama") {
+      return "bg-red-500"; // No API key
+    }
+    return "bg-green-500"; // API key configured
+  };
+
+  // Get API status text
+  const getAPIStatusText = () => {
+    const settings = settingsService.loadSettings();
+    const provider = settings.selectedProvider;
+    const apiKey = settings.apiKeys[provider];
+
+    if (!apiKey && provider !== "ollama") {
+      return "API key required";
+    }
+    return `${provider}/${settings.selectedModel}`;
+  };
+
   // Get layout button icon
   const getLayoutIcon = () => {
     switch (layoutMode) {
@@ -369,6 +393,16 @@ export default function CodeCanvas({ setSidebarOpen }) {
             <h1 className="text-lg font-semibold text-gray-900 sm:hidden">
               Code Canvas
             </h1>
+          </div>
+
+          {/* API Status Indicator */}
+          <div className="flex items-center space-x-2 text-sm">
+            <div
+              className={`w-2 h-2 rounded-full ${getAPIStatusColor()}`}
+            ></div>
+            <span className="text-gray-600 hidden md:inline">
+              {getAPIStatusText()}
+            </span>
           </div>
 
           <Separator orientation="vertical" className="h-6" />
