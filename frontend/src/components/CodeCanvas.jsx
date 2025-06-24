@@ -6,6 +6,7 @@ import MonacoEditor from "./MonacoEditor";
 import AISuggestionProvider from "./AISuggestionProvider";
 import DiffViewer from "./DiffViewer";
 import MobileHeader from "./MobileHeader";
+import BackendInstructions from "./BackendInstructions";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -30,6 +31,7 @@ import {
   FileText,
   Palette,
   AlertTriangle,
+  Server,
 } from "lucide-react";
 
 const SUPPORTED_LANGUAGES = [
@@ -112,6 +114,7 @@ export default function CodeCanvas({ setSidebarOpen }) {
   const [savedCode, setSavedCode] = useState("");
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isMockMode, setIsMockMode] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
   const { showToast } = useToastNotifications();
 
   // Initialize with default code
@@ -411,14 +414,25 @@ export default function CodeCanvas({ setSidebarOpen }) {
       {/* Mock Mode Banner */}
       {isMockMode && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2">
-          <div className="flex items-center space-x-2 text-yellow-800">
-            <AlertTriangle className="w-4 h-4" />
-            <span className="text-sm font-medium">
-              Mock Mode Active - Backend server not running.
-              <span className="ml-1 text-yellow-600">
-                Start the Python backend for real AI analysis.
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-yellow-800">
+              <AlertTriangle className="w-4 h-4" />
+              <span className="text-sm font-medium">
+                Mock Mode Active - Backend server not running.
+                <span className="ml-1 text-yellow-600">
+                  Start the Python backend for real AI analysis.
+                </span>
               </span>
-            </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowInstructions(true)}
+              className="text-yellow-800 border-yellow-300 hover:bg-yellow-100"
+            >
+              <Server className="w-4 h-4 mr-1" />
+              Setup Guide
+            </Button>
           </div>
         </div>
       )}
@@ -594,6 +608,12 @@ export default function CodeCanvas({ setSidebarOpen }) {
           </div>
         </div>
       )}
+
+      {/* Backend Setup Instructions Modal */}
+      <BackendInstructions
+        isVisible={showInstructions}
+        onClose={() => setShowInstructions(false)}
+      />
     </div>
   );
 }
