@@ -8,11 +8,23 @@ export class CodeCanvasService {
         method: "POST",
         body: JSON.stringify({
           code,
+          files: [
+            { name: `code.${getFileExtension(language)}`, content: code },
+          ],
+          analysis_type: "code_improvement",
           language,
-          analysis_type: "improvement_suggestions",
+          provider: "openai",
+          model: "gpt-4o-mini",
         }),
       });
-      return response;
+
+      // Transform response to match expected format
+      return {
+        suggestions:
+          response.suggestions || response.analysis?.suggestions || [],
+        analysis: response.analysis,
+        session_id: response.session_id,
+      };
     } catch (error) {
       console.error("Error analyzing code:", error);
       throw error;
@@ -22,16 +34,24 @@ export class CodeCanvasService {
   // Get specific code improvements for a selection
   static async getCodeImprovements(code, selection, language = "javascript") {
     try {
-      const response = await apiRequest("/api/llm/improve", {
+      // Use the existing analyze endpoint with specific context
+      const improvePrompt = `Please improve the following ${language} code:\n\n${selection.text || code}\n\nProvide the improved version with explanations.`;
+
+      const response = await apiRequest("/api/llm/chat", {
         method: "POST",
         body: JSON.stringify({
-          code,
-          selection,
-          language,
-          improvement_type: "refactor",
+          message: improvePrompt,
+          session_id: `improve_${Date.now()}`,
+          provider: "openai",
+          model: "gpt-4o-mini",
         }),
       });
-      return response;
+
+      return {
+        improved_code: response.response || response.message,
+        explanation: response.explanation,
+        session_id: response.session_id,
+      };
     } catch (error) {
       console.error("Error getting code improvements:", error);
       throw error;
@@ -41,34 +61,53 @@ export class CodeCanvasService {
   // Get real-time code suggestions as user types
   static async getSuggestions(code, cursorPosition, language = "javascript") {
     try {
-      const response = await apiRequest("/api/llm/suggest", {
+      // Use analyze endpoint for suggestions
+      const response = await apiRequest("/api/llm/analyze", {
         method: "POST",
         body: JSON.stringify({
           code,
-          cursor_position: cursorPosition,
+          files: [
+            { name: `code.${getFileExtension(language)}`, content: code },
+          ],
+          analysis_type: "suggestions",
           language,
-          context: "code_completion",
+          provider: "openai",
+          model: "gpt-4o-mini",
         }),
       });
-      return response;
+
+      return {
+        quickFix: response.quickFix,
+        suggestions: response.suggestions || [],
+      };
     } catch (error) {
       console.error("Error getting suggestions:", error);
-      throw error;
+      return { quickFix: null, suggestions: [] };
     }
   }
 
   // Check code for errors and issues
   static async validateCode(code, language = "javascript") {
     try {
-      const response = await apiRequest("/api/llm/validate", {
+      const response = await apiRequest("/api/llm/analyze", {
         method: "POST",
         body: JSON.stringify({
           code,
+          files: [
+            { name: `code.${getFileExtension(language)}`, content: code },
+          ],
+          analysis_type: "validation",
           language,
-          validation_type: "syntax_and_logic",
+          provider: "openai",
+          model: "gpt-4o-mini",
         }),
       });
-      return response;
+
+      return {
+        errors: response.errors || [],
+        warnings: response.warnings || [],
+        suggestions: response.suggestions || [],
+      };
     } catch (error) {
       console.error("Error validating code:", error);
       throw error;
