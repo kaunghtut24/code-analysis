@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useToastNotifications } from "@/hooks/useToastNotifications";
 import { settingsService } from "@/services/settingsService";
+import { shouldUseMockApi } from "@/services/mockApiService";
 import MonacoEditor from "./MonacoEditor";
 import AISuggestionProvider from "./AISuggestionProvider";
 import DiffViewer from "./DiffViewer";
@@ -28,6 +29,7 @@ import {
   Code2,
   FileText,
   Palette,
+  AlertTriangle,
 } from "lucide-react";
 
 const SUPPORTED_LANGUAGES = [
@@ -109,12 +111,28 @@ export default function CodeCanvas({ setSidebarOpen }) {
   const [layoutMode, setLayoutMode] = useState("split"); // 'split', 'editor-only', 'suggestions-only'
   const [savedCode, setSavedCode] = useState("");
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [isMockMode, setIsMockMode] = useState(false);
   const { showToast } = useToastNotifications();
 
   // Initialize with default code
   useEffect(() => {
     setCode(DEFAULT_CODE[language] || DEFAULT_CODE.javascript);
   }, [language]);
+
+  // Check if we're in mock mode
+  useEffect(() => {
+    const checkMockMode = async () => {
+      const useMock = await shouldUseMockApi();
+      setIsMockMode(useMock);
+      if (useMock) {
+        showToast(
+          "⚠️ Backend not available - using mock mode for testing",
+          "warning",
+        );
+      }
+    };
+    checkMockMode();
+  }, []);
 
   // Handle code changes
   const handleCodeChange = (value) => {
@@ -339,6 +357,10 @@ export default function CodeCanvas({ setSidebarOpen }) {
 
   // Get API status color
   const getAPIStatusColor = () => {
+    if (isMockMode) {
+      return "bg-yellow-500"; // Mock mode
+    }
+
     const settings = settingsService.loadSettings();
     const provider = settings.selectedProvider;
     const apiKey = settings.apiKeys[provider];
@@ -351,6 +373,10 @@ export default function CodeCanvas({ setSidebarOpen }) {
 
   // Get API status text
   const getAPIStatusText = () => {
+    if (isMockMode) {
+      return "Mock Mode (Backend offline)";
+    }
+
     const settings = settingsService.loadSettings();
     const provider = settings.selectedProvider;
     const apiKey = settings.apiKeys[provider];
@@ -381,6 +407,21 @@ export default function CodeCanvas({ setSidebarOpen }) {
     >
       {/* Mobile Header */}
       <MobileHeader setSidebarOpen={setSidebarOpen} title="Code Canvas" />
+
+      {/* Mock Mode Banner */}
+      {isMockMode && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2">
+          <div className="flex items-center space-x-2 text-yellow-800">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="text-sm font-medium">
+              Mock Mode Active - Backend server not running.
+              <span className="ml-1 text-yellow-600">
+                Start the Python backend for real AI analysis.
+              </span>
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="flex items-center justify-between p-4 border-b bg-white">
