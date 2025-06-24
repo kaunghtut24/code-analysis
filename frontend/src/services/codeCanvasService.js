@@ -1,5 +1,31 @@
 import { apiRequest } from "@/lib/api";
 
+// Helper function to get file extension for languages
+const getFileExtension = (language) => {
+  const extensions = {
+    javascript: "js",
+    typescript: "ts",
+    python: "py",
+    java: "java",
+    cpp: "cpp",
+    c: "c",
+    html: "html",
+    css: "css",
+    json: "json",
+    markdown: "md",
+    xml: "xml",
+    yaml: "yml",
+    sql: "sql",
+    php: "php",
+    ruby: "rb",
+    go: "go",
+    rust: "rs",
+    kotlin: "kt",
+    swift: "swift",
+  };
+  return extensions[language] || "txt";
+};
+
 export class CodeCanvasService {
   // Analyze code and get AI suggestions
   static async analyzeCode(code, language = "javascript") {
