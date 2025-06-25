@@ -9,14 +9,17 @@ WORKDIR /app/frontend
 # Copy package files
 COPY frontend/package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci
 
 # Copy frontend source
 COPY frontend/ ./
 
 # Build frontend
 RUN npm run build
+
+# Clean up node_modules to reduce image size (optional)
+RUN rm -rf node_modules
 
 # Python backend stage
 FROM python:3.11-slim AS backend
