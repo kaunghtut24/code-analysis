@@ -306,6 +306,94 @@ export class CodeCanvasService {
     return "info";
   }
 
+  // Get smart suggestions based on code patterns and context
+  static async getSmartSuggestions(code, language = "javascript") {
+    try {
+      const config = this.getLLMConfig();
+
+      const smartPrompt = `Analyze this ${language} code and provide smart, contextual suggestions for improvements, optimizations, and best practices. Focus on practical, actionable advice:\n\n${code}`;
+
+      const response = await apiRequest("/api/llm/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          message: smartPrompt,
+          session_id: `smart_${Date.now()}`,
+          ...config,
+        }),
+      });
+
+      return {
+        suggestions: this.parseSmartSuggestions(response.response || response.message),
+        session_id: response.session_id,
+      };
+    } catch (error) {
+      console.error("Error getting smart suggestions:", error);
+      return { suggestions: [] };
+    }
+  }
+
+  // Get contextual hints based on current code context
+  static async getContextualHints(code, language = "javascript") {
+    try {
+      const config = this.getLLMConfig();
+
+      const hintPrompt = `Provide contextual hints and tips for this ${language} code. Focus on language-specific best practices, common patterns, and helpful shortcuts:\n\n${code}`;
+
+      const response = await apiRequest("/api/llm/chat", {
+        method: "POST",
+        body: JSON.stringify({
+          message: hintPrompt,
+          session_id: `hints_${Date.now()}`,
+          ...config,
+        }),
+      });
+
+      return {
+        hints: this.parseContextualHints(response.response || response.message),
+        session_id: response.session_id,
+      };
+    } catch (error) {
+      console.error("Error getting contextual hints:", error);
+      return { hints: [] };
+    }
+  }
+
+  // Parse smart suggestions from AI response
+  static parseSmartSuggestions(text) {
+    const suggestions = [];
+    const lines = text.split('\n').filter(line => line.trim());
+
+    lines.forEach(line => {
+      if (line.match(/^[\d\-\*]/)) {
+        suggestions.push({
+          message: line.replace(/^[\d\-\*\.\s]+/, '').trim(),
+          type: 'smart',
+          confidence: 0.8
+        });
+      }
+    });
+
+    return suggestions.slice(0, 5); // Limit to 5 smart suggestions
+  }
+
+  // Parse contextual hints from AI response
+  static parseContextualHints(text) {
+    const hints = [];
+    const lines = text.split('\n').filter(line => line.trim());
+
+    lines.forEach(line => {
+      if (line.match(/^[\d\-\*]/)) {
+        hints.push({
+          message: line.replace(/^[\d\-\*\.\s]+/, '').trim(),
+          type: 'hint',
+          category: 'general'
+        });
+      }
+    });
+
+    return hints.slice(0, 3); // Limit to 3 hints
+  }
+
   // Apply AI suggested changes to code
   static applyChanges(originalCode, changes) {
     let modifiedCode = originalCode;

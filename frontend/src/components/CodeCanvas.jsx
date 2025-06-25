@@ -115,6 +115,7 @@ export default function CodeCanvas({ setSidebarOpen }) {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [isMockMode, setIsMockMode] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [editorWidth, setEditorWidth] = useState(60); // Percentage width for editor
   const { showToast } = useToastNotifications();
 
   // Initialize with default code
@@ -150,13 +151,59 @@ export default function CodeCanvas({ setSidebarOpen }) {
     }
   };
 
-  // Handle suggestion application
+  // Enhanced handling of AI suggestions with better feedback
   const handleApplySuggestion = (improvedCode, suggestion) => {
     setCode(improvedCode);
-    showToast(
-      `Applied AI suggestion: ${suggestion?.title || "Code improvement"}`,
-      "success",
-    );
+
+    // Enhanced success message with suggestion details
+    const title = suggestion?.title || suggestion?.message || "Code improvement";
+    let message = `✨ Applied: ${title}`;
+
+    if (suggestion?.confidence) {
+      message += ` (${Math.round(suggestion.confidence * 100)}% confidence)`;
+    }
+
+    if (suggestion?.estimatedImpact) {
+      message += ` - ${suggestion.estimatedImpact} impact`;
+    }
+
+    showToast(message, "success");
+
+    // Track suggestion application for analytics
+    trackSuggestionUsage(suggestion);
+
+    // Add to history with detailed information
+    if (typeof addToHistory === 'function') {
+      addToHistory(improvedCode, `Applied AI suggestion: ${title}`, {
+        type: 'ai_suggestion',
+        suggestion: suggestion,
+        confidence: suggestion?.confidence,
+        impact: suggestion?.estimatedImpact,
+        appliedAt: Date.now()
+      });
+    }
+  };
+
+  // Track suggestion usage for learning and analytics
+  const trackSuggestionUsage = (suggestion) => {
+    if (!suggestion) return;
+
+    const usage = JSON.parse(localStorage.getItem('aiSuggestionUsage') || '{}');
+    const key = `${suggestion.type || 'unknown'}_${suggestion.severity || 'info'}`;
+
+    usage[key] = (usage[key] || 0) + 1;
+    usage.totalApplied = (usage.totalApplied || 0) + 1;
+    usage.lastUsed = Date.now();
+
+    localStorage.setItem('aiSuggestionUsage', JSON.stringify(usage));
+
+    // Log for debugging
+    console.log('📊 Suggestion applied:', {
+      type: suggestion.type,
+      severity: suggestion.severity,
+      confidence: suggestion.confidence,
+      totalApplied: usage.totalApplied
+    });
   };
 
   // Handle diff preview
@@ -350,12 +397,110 @@ export default function CodeCanvas({ setSidebarOpen }) {
     }
   };
 
+  // Add keyboard shortcuts for enhanced productivity
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Only handle shortcuts when not typing in input fields
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Ctrl/Cmd + S to save
+      if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+        event.preventDefault();
+        handleSave();
+      }
+
+      // Ctrl/Cmd + O to load
+      if ((event.ctrlKey || event.metaKey) && event.key === 'o') {
+        event.preventDefault();
+        handleLoad();
+      }
+
+      // Ctrl/Cmd + D to download
+      if ((event.ctrlKey || event.metaKey) && event.key === 'd') {
+        event.preventDefault();
+        handleDownload();
+      }
+
+      // Ctrl/Cmd + / to toggle AI suggestions
+      if ((event.ctrlKey || event.metaKey) && event.key === '/') {
+        event.preventDefault();
+        setAiSuggestionsEnabled(prev => {
+          const newState = !prev;
+          showToast(`AI Suggestions ${newState ? 'enabled' : 'disabled'}`, "info");
+          return newState;
+        });
+      }
+
+      // Ctrl/Cmd + Shift + L to change layout
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'L') {
+        event.preventDefault();
+        toggleLayout();
+      }
+
+      // Escape to close diff view
+      if (event.key === 'Escape' && showDiff) {
+        event.preventDefault();
+        setShowDiff(false);
+      }
+
+      // Ctrl/Cmd + T to test connection
+      if ((event.ctrlKey || event.metaKey) && event.key === 't') {
+        event.preventDefault();
+        handleTestConnection();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showDiff, aiSuggestionsEnabled]);
+
   // Toggle layout modes
   const toggleLayout = () => {
     const modes = ["split", "editor-only", "suggestions-only"];
     const currentIndex = modes.indexOf(layoutMode);
     const nextIndex = (currentIndex + 1) % modes.length;
-    setLayoutMode(modes[nextIndex]);
+    const newMode = modes[nextIndex];
+    setLayoutMode(newMode);
+
+    // Reset to default proportions when switching to split mode
+    if (newMode === "split") {
+      setEditorWidth(60);
+    }
+
+    // Show toast with layout description
+    const descriptions = {
+      "split": `Split View (${Math.round(editorWidth)}% Editor + ${Math.round(100-editorWidth)}% AI Assistant)`,
+      "editor-only": "Editor Only (Full Width)",
+      "suggestions-only": "AI Assistant Only (Full Width)"
+    };
+    showToast(`Layout: ${descriptions[newMode]}`, "info");
+  };
+
+  // Set specific layout preset
+  const setLayoutPreset = (preset) => {
+    switch (preset) {
+      case "balanced":
+        setLayoutMode("split");
+        setEditorWidth(50);
+        showToast("Layout: Balanced (50/50)", "info");
+        break;
+      case "editor-focused":
+        setLayoutMode("split");
+        setEditorWidth(70);
+        showToast("Layout: Editor Focused (70/30)", "info");
+        break;
+      case "ai-focused":
+        setLayoutMode("split");
+        setEditorWidth(40);
+        showToast("Layout: AI Focused (40/60)", "info");
+        break;
+      default:
+        setLayoutMode("split");
+        setEditorWidth(60);
+        showToast("Layout: Default (60/40)", "info");
+    }
   };
 
   // Get API status color
@@ -512,14 +657,64 @@ export default function CodeCanvas({ setSidebarOpen }) {
 
           <Separator orientation="vertical" className="h-6" />
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleLayout}
-            title={`Layout: ${layoutMode}`}
-          >
-            {getLayoutIcon()}
-          </Button>
+          <div className="flex items-center space-x-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleLayout}
+              title={`Current: ${layoutMode === 'split' ? `${Math.round(editorWidth)}/${Math.round(100-editorWidth)} Split` : layoutMode === 'editor-only' ? 'Editor Only' : 'AI Assistant Only'}`}
+              className="flex items-center space-x-1"
+            >
+              {getLayoutIcon()}
+              <span className="hidden lg:inline text-xs">
+                {layoutMode === 'split' ? `${Math.round(editorWidth)}/${Math.round(100-editorWidth)}` : layoutMode === 'editor-only' ? 'Editor' : 'AI'}
+              </span>
+            </Button>
+
+            {/* Layout Presets Dropdown */}
+            {layoutMode === 'split' && (
+              <div className="relative group">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="px-2 text-xs text-gray-600 hover:text-gray-900"
+                  title="Layout Presets"
+                >
+                  ⚙️
+                </Button>
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-10 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 min-w-40">
+                  <button
+                    onClick={() => setLayoutPreset("balanced")}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between"
+                  >
+                    <span>Balanced</span>
+                    <span className="text-gray-500">50/50</span>
+                  </button>
+                  <button
+                    onClick={() => setLayoutPreset("default")}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between"
+                  >
+                    <span>Default</span>
+                    <span className="text-gray-500">60/40</span>
+                  </button>
+                  <button
+                    onClick={() => setLayoutPreset("editor-focused")}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between"
+                  >
+                    <span>Editor Focused</span>
+                    <span className="text-gray-500">70/30</span>
+                  </button>
+                  <button
+                    onClick={() => setLayoutPreset("ai-focused")}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 flex items-center justify-between"
+                  >
+                    <span>AI Focused</span>
+                    <span className="text-gray-500">40/60</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           <Button
             variant="outline"
@@ -559,12 +754,33 @@ export default function CodeCanvas({ setSidebarOpen }) {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Editor */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* Interactive Code Editor */}
         {(layoutMode === "split" || layoutMode === "editor-only") && (
           <div
-            className={`${layoutMode === "split" ? "flex-1" : "w-full"} flex flex-col`}
+            className={`${
+              layoutMode === "split"
+                ? "w-full min-w-0 lg:min-w-96" // Dynamic width on large screens, full width on mobile
+                : "w-full"
+            } flex flex-col border-r border-gray-200 bg-white`}
+            style={{
+              width: layoutMode === "split" ? `${editorWidth}%` : "100%"
+            }}
           >
+            {/* Editor Header */}
+            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+              <div className="flex items-center space-x-2">
+                <Code2 className="w-4 h-4 text-blue-600" />
+                <h2 className="text-sm font-semibold text-gray-900">Interactive Code Editor</h2>
+                <div className="flex items-center space-x-1 text-xs text-gray-500">
+                  <span>•</span>
+                  <span>{language}</span>
+                  <span>•</span>
+                  <span>{code.split('\n').length} lines</span>
+                </div>
+              </div>
+            </div>
+
             <MonacoEditor
               value={code}
               onChange={handleCodeChange}
@@ -576,10 +792,47 @@ export default function CodeCanvas({ setSidebarOpen }) {
           </div>
         )}
 
-        {/* Suggestions Panel */}
+        {/* Resize Handle */}
+        {layoutMode === "split" && (
+          <div
+            className="hidden lg:block w-1 bg-gray-300 hover:bg-blue-500 cursor-col-resize transition-colors duration-200 relative group"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              const startX = e.clientX;
+              const startWidth = editorWidth;
+
+              const handleMouseMove = (e) => {
+                const deltaX = e.clientX - startX;
+                const containerWidth = e.target.closest('.flex').offsetWidth;
+                const deltaPercent = (deltaX / containerWidth) * 100;
+                const newWidth = Math.min(Math.max(startWidth + deltaPercent, 30), 80); // Limit between 30% and 80%
+                setEditorWidth(newWidth);
+              };
+
+              const handleMouseUp = () => {
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+              };
+
+              document.addEventListener('mousemove', handleMouseMove);
+              document.addEventListener('mouseup', handleMouseUp);
+            }}
+          >
+            <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-blue-500 group-hover:opacity-20"></div>
+          </div>
+        )}
+
+        {/* AI Code Assistant Panel */}
         {(layoutMode === "split" || layoutMode === "suggestions-only") && (
           <div
-            className={`${layoutMode === "split" ? "w-80" : "w-full"} border-l`}
+            className={`${
+              layoutMode === "split"
+                ? "w-full min-w-0 lg:min-h-0 min-h-96" // Dynamic width on large screens, full width on mobile
+                : "w-full"
+            } bg-gray-50 flex flex-col`}
+            style={{
+              width: layoutMode === "split" ? `${100 - editorWidth}%` : "100%"
+            }}
           >
             <AISuggestionProvider
               code={code}
