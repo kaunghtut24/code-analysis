@@ -25,6 +25,8 @@ def init_database():
     
     # Database configuration
     database_url = os.getenv('DATABASE_URL')
+    print(f"🔍 DATABASE_URL environment variable: {'Set' if database_url else 'Not set'}")
+
     if database_url:
         # Fly.io provides PostgreSQL URL
         if database_url.startswith('postgres://'):
@@ -34,6 +36,7 @@ def init_database():
     else:
         # Fallback to SQLite for local development
         db_path = os.path.join(os.path.dirname(__file__), '..', 'database', 'app.db')
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)  # Ensure directory exists
         app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
         print(f"✅ Using SQLite database at {db_path}")
     
@@ -48,13 +51,23 @@ def init_database():
             # Create all tables
             db.create_all()
             print("✅ Database tables created successfully")
-            
+
             # Verify tables exist
-            tables = db.engine.table_names()
-            print(f"✅ Created tables: {', '.join(tables)}")
-            
+            try:
+                from sqlalchemy import inspect
+                inspector = inspect(db.engine)
+                tables = inspector.get_table_names()
+                if tables:
+                    print(f"✅ Created tables: {', '.join(tables)}")
+                else:
+                    print("✅ Database initialized (no tables to create)")
+            except Exception as verify_error:
+                print(f"⚠️  Could not verify tables (but creation succeeded): {verify_error}")
+
         except Exception as e:
             print(f"❌ Error creating database tables: {e}")
+            import traceback
+            traceback.print_exc()
             sys.exit(1)
 
 if __name__ == '__main__':
