@@ -193,23 +193,47 @@ function Show-Info {
     Write-Host ""
 }
 
+# Check if app exists and create if needed
+function Test-AppExists {
+    try {
+        $null = flyctl info 2>$null
+        Write-Success "Fly.io app exists"
+        return $true
+    }
+    catch {
+        Write-Warning "Fly.io app not found. Creating app..."
+
+        Write-Host ""
+        Write-Host "Please follow the prompts to create your Fly.io app:" -ForegroundColor Yellow
+        Write-Host "- App name: ai-code-assistant (or your choice)" -ForegroundColor Gray
+        Write-Host "- Region: Choose closest to your users" -ForegroundColor Gray
+        Write-Host "- PostgreSQL: Yes" -ForegroundColor Gray
+        Write-Host "- Redis: No" -ForegroundColor Gray
+        Write-Host ""
+
+        try {
+            flyctl launch --no-deploy
+            Write-Success "App created successfully"
+            return $true
+        }
+        catch {
+            Write-Error "Failed to create app. Please run 'flyctl launch --no-deploy' manually"
+            return $false
+        }
+    }
+}
+
 # Main deployment flow
 function Start-Deployment {
     Write-Host "Starting deployment process..." -ForegroundColor Blue
     Write-Host ""
-    
+
     # Pre-flight checks
     if (-not (Test-Flyctl)) { exit 1 }
     if (-not (Test-Auth)) { exit 1 }
-    
-    # Check if app exists
-    try {
-        $null = flyctl info 2>$null
-    }
-    catch {
-        Write-Status "App not found. Please run 'flyctl launch --no-deploy' first"
-        exit 1
-    }
+
+    # Check if app exists and create if needed
+    if (-not (Test-AppExists)) { exit 1 }
     
     # Setup process
     Set-Secrets

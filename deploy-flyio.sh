@@ -157,18 +157,43 @@ show_info() {
     echo ""
 }
 
+# Check if app exists and create if needed
+check_app_exists() {
+    if flyctl info &> /dev/null; then
+        print_success "Fly.io app exists"
+        return 0
+    else
+        print_warning "Fly.io app not found. Creating app..."
+
+        echo ""
+        print_warning "Please follow the prompts to create your Fly.io app:"
+        echo "- App name: ai-code-assistant (or your choice)"
+        echo "- Region: Choose closest to your users"
+        echo "- PostgreSQL: Yes"
+        echo "- Redis: No"
+        echo ""
+
+        if flyctl launch --no-deploy; then
+            print_success "App created successfully"
+            return 0
+        else
+            print_error "Failed to create app. Please run 'flyctl launch --no-deploy' manually"
+            return 1
+        fi
+    fi
+}
+
 # Main deployment flow
 main() {
     echo "Starting deployment process..."
     echo ""
-    
+
     # Pre-flight checks
     check_flyctl
     check_auth
-    
-    # Check if app exists
-    if ! flyctl info &> /dev/null; then
-        print_status "App not found. Please run 'flyctl launch --no-deploy' first"
+
+    # Check if app exists and create if needed
+    if ! check_app_exists; then
         exit 1
     fi
     
