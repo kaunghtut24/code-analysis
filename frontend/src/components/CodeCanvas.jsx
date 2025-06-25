@@ -116,7 +116,26 @@ export default function CodeCanvas({ setSidebarOpen }) {
   const [isMockMode, setIsMockMode] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [editorWidth, setEditorWidth] = useState(60); // Percentage width for editor
-  const { showToast } = useToastNotifications();
+  const { showSuccess, showError, showInfo, showWarning } = useToastNotifications();
+
+  // Helper function to match the old showToast interface
+  const showToast = (message, type = "info") => {
+    switch (type) {
+      case "success":
+        showSuccess("Success", message);
+        break;
+      case "error":
+        showError("Error", message);
+        break;
+      case "warning":
+        showWarning("Warning", message);
+        break;
+      case "info":
+      default:
+        showInfo("Info", message);
+        break;
+    }
+  };
 
   // Initialize with default code
   useEffect(() => {

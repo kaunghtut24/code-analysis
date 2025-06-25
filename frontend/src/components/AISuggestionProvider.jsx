@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { CodeCanvasService } from "@/services/codeCanvasService";
+import { useToastNotifications } from "@/hooks/useToastNotifications";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,7 @@ import {
   Star,
   ThumbsUp,
   ThumbsDown,
+  Copy,
 } from "lucide-react";
 
 export default function AISuggestionProvider({
@@ -47,14 +49,45 @@ export default function AISuggestionProvider({
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [smartSuggestions, setSmartSuggestions] = useState([]);
   const [contextualHints, setContextualHints] = useState([]);
+  const { showSuccess, showError, showInfo, showWarning } = useToastNotifications();
+
+  // Helper function to match the old showToast interface
+  const showToast = (message, type = "info") => {
+    switch (type) {
+      case "success":
+        showSuccess("Success", message);
+        break;
+      case "error":
+        showError("Error", message);
+        break;
+      case "warning":
+        showWarning("Warning", message);
+        break;
+      case "info":
+      default:
+        showInfo("Info", message);
+        break;
+    }
+  };
 
   // Enhanced analyze code with progress tracking and smart suggestions
   const analyzecode = useCallback(
-    async (codeToAnalyze) => {
-      if (!codeToAnalyze || codeToAnalyze === lastAnalyzedCode) return;
+    async (codeToAnalyze, forceRefresh = false) => {
+      if (!codeToAnalyze || (!forceRefresh && codeToAnalyze === lastAnalyzedCode)) return;
 
       setIsLoading(true);
       setAnalysisProgress(0);
+
+      // Clear cache for forced refresh to ensure fresh results
+      if (forceRefresh) {
+        console.log('🔄 Force refresh - clearing cache and resetting state');
+        CodeCanvasService.clearCacheForCode(codeToAnalyze, language);
+        setSuggestions([]);
+        setSmartSuggestions([]);
+        setContextualHints([]);
+        setLastAnalyzedCode(""); // Reset to ensure fresh analysis
+        showToast("Refreshing all suggestions...", "info");
+      }
 
       try {
         // Simulate progress for better UX
@@ -79,6 +112,25 @@ export default function AISuggestionProvider({
         setContextualHints(contextHints.hints || []);
         setLastAnalyzedCode(codeToAnalyze);
 
+        // Show user-friendly error messages for Ollama issues
+        if (analysis.error_type === 'model_not_found') {
+          showToast(`Ollama model not found. Please run: ollama pull ${analysis.model || 'your-model'}`, "error");
+        } else if (analysis.error_type === 'server_not_running') {
+          showToast("Ollama server not running. Please start Ollama with: ollama serve", "error");
+        } else if (analysis.provider === 'demo' && analysis.model === 'fallback') {
+          // Only show this once per session, not repeatedly
+          if (!sessionStorage.getItem('demo_mode_notified')) {
+            showToast("Using demo mode. Configure AI provider in Settings for real suggestions.", "info");
+            sessionStorage.setItem('demo_mode_notified', 'true');
+          }
+        }
+
+        // Show success feedback for forced refresh
+        if (forceRefresh) {
+          const totalSuggestions = enhancedSuggestions.length + (smartAnalysis.suggestions || []).length + (contextHints.hints || []).length;
+          showToast(`Refresh complete! Found ${totalSuggestions} suggestions.`, "success");
+        }
+
         // Auto-apply high-confidence suggestions if enabled
         autoApplyHighConfidenceSuggestions(enhancedSuggestions);
 
@@ -87,6 +139,11 @@ export default function AISuggestionProvider({
         setSuggestions([]);
         setSmartSuggestions([]);
         setContextualHints([]);
+
+        // Show error feedback for forced refresh
+        if (forceRefresh) {
+          showToast("Refresh failed. Please check your AI configuration.", "error");
+        }
       } finally {
         setIsLoading(false);
         setTimeout(() => setAnalysisProgress(0), 1000);
@@ -97,14 +154,21 @@ export default function AISuggestionProvider({
 
   // Enhanced suggestion processing
   const enhanceSuggestions = (rawSuggestions) => {
+    // Process suggestions from the service (real AI or demo fallback)
+    if (!rawSuggestions || rawSuggestions.length === 0) {
+      return [];
+    }
+
     return rawSuggestions.map((suggestion, index) => ({
       ...suggestion,
-      id: `suggestion_${index}_${Date.now()}`,
-      confidence: calculateConfidence(suggestion),
-      priority: calculatePriority(suggestion),
-      estimatedImpact: estimateImpact(suggestion),
-      category: categorizeByContext(suggestion, language),
-      timestamp: Date.now(),
+      id: suggestion.id || `suggestion_${index}_${Date.now()}`,
+      confidence: suggestion.confidence || calculateConfidence(suggestion),
+      priority: suggestion.priority || calculatePriority(suggestion),
+      estimatedImpact: suggestion.estimatedImpact || estimateImpact(suggestion),
+      category: suggestion.category || categorizeByContext(suggestion, language),
+      timestamp: suggestion.timestamp || Date.now(),
+      code_snippet: suggestion.code_snippet || generateCodeSnippet(suggestion, code, language),
+      reasoning: suggestion.reasoning || generateReasoning(suggestion),
     }));
   };
 
@@ -151,6 +215,57 @@ export default function AISuggestionProvider({
       cpp: ['STL', 'Memory Management', 'Performance', 'Modern C++']
     };
     return categories[lang] || ['General'];
+  };
+
+  // Helper functions for generating code snippets
+  const findLineContaining = (lines, searchText) => {
+    const index = lines.findIndex(line => line.includes(searchText));
+    return index >= 0 ? index + 1 : null;
+  };
+
+  const generateCodeSnippet = (suggestion, code, language) => {
+    // Generate appropriate code snippet based on suggestion type
+    switch (suggestion.type) {
+      case 'performance':
+        return generatePerformanceSnippet(suggestion, code, language);
+      case 'security':
+        return generateSecuritySnippet(suggestion, code, language);
+      case 'best_practice':
+        return generateBestPracticeSnippet(suggestion, code, language);
+      default:
+        return `// Improved code for: ${suggestion.title}\n// ${suggestion.description}`;
+    }
+  };
+
+  const generateReasoning = (suggestion) => {
+    const reasoningMap = {
+      performance: "This optimization improves execution speed and reduces resource usage.",
+      security: "This change prevents potential security vulnerabilities and protects user data.",
+      best_practice: "Following this practice improves code maintainability and reduces bugs.",
+      refactor: "This refactoring improves code structure and readability."
+    };
+    return reasoningMap[suggestion.type] || "This improvement enhances code quality.";
+  };
+
+  const generatePerformanceSnippet = (suggestion, code, language) => {
+    if (language === 'javascript') {
+      return "// Optimized version:\nconst results = items.map(item => {\n  return processItem(item);\n}).filter(result => result !== null);";
+    }
+    return "// Performance optimized code here";
+  };
+
+  const generateSecuritySnippet = (suggestion, code, language) => {
+    if (language === 'javascript') {
+      return "// Secure version:\nconst sanitizedInput = DOMPurify.sanitize(userInput);\nelement.innerHTML = sanitizedInput;";
+    }
+    return "// Security enhanced code here";
+  };
+
+  const generateBestPracticeSnippet = (suggestion, code, language) => {
+    if (language === 'javascript') {
+      return "// Best practice implementation:\nconst handleAsync = async () => {\n  try {\n    const result = await operation();\n    return result;\n  } catch (error) {\n    console.error('Error:', error);\n    throw error;\n  }\n};";
+    }
+    return "// Best practice code here";
   };
 
   const autoApplyHighConfidenceSuggestions = (suggestions) => {
@@ -309,22 +424,99 @@ export default function AISuggestionProvider({
   // Show diff for a suggestion
   const showSuggestionDiff = async (suggestion) => {
     try {
-      const improvement = await CodeCanvasService.getCodeImprovements(
-        code,
-        {
-          text: suggestion.code_snippet || code,
-          line: suggestion.line,
-          type: suggestion.type,
-        },
-        language,
-      );
+      setIsLoading(true);
 
-      if (improvement.improved_code && onShowDiff) {
-        onShowDiff(code, improvement.improved_code, suggestion);
+      // Generate improved code based on the suggestion
+      let improvedCode;
+
+      if (suggestion.code_snippet) {
+        // If suggestion has a specific code snippet, apply it
+        improvedCode = applySuggestionToCode(code, suggestion);
+      } else {
+        // Otherwise, get AI-generated improvement
+        const improvement = await CodeCanvasService.getCodeImprovements(
+          code,
+          {
+            text: suggestion.description || suggestion.message,
+            line: suggestion.line,
+            type: suggestion.type,
+          },
+          language,
+        );
+        improvedCode = improvement.improved_code;
+      }
+
+      if (improvedCode && onShowDiff) {
+        // Enhanced suggestion object with preview data
+        const enhancedSuggestion = {
+          ...suggestion,
+          preview_code: improvedCode,
+          original_code: code,
+          changes_summary: generateChangesSummary(code, improvedCode)
+        };
+
+        onShowDiff(code, improvedCode, enhancedSuggestion);
+        showToast("Preview generated! Review the changes and click Accept to apply.", "success");
       }
     } catch (error) {
       console.error("Failed to generate diff:", error);
+      showToast("Failed to generate preview. Please try again.", "error");
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Apply suggestion to code (for suggestions with specific code snippets)
+  const applySuggestionToCode = (originalCode, suggestion) => {
+    if (!suggestion.code_snippet) return originalCode;
+
+    const lines = originalCode.split('\n');
+
+    if (suggestion.line && suggestion.line > 0) {
+      // Replace specific line
+      const lineIndex = suggestion.line - 1;
+      if (lineIndex < lines.length) {
+        lines[lineIndex] = suggestion.code_snippet;
+      }
+    } else if (suggestion.start_line && suggestion.end_line) {
+      // Replace range of lines
+      const startIndex = suggestion.start_line - 1;
+      const endIndex = suggestion.end_line - 1;
+      lines.splice(startIndex, endIndex - startIndex + 1, suggestion.code_snippet);
+    } else {
+      // Append or insert at appropriate location
+      if (suggestion.insert_at === 'beginning') {
+        lines.unshift(suggestion.code_snippet);
+      } else if (suggestion.insert_at === 'end') {
+        lines.push(suggestion.code_snippet);
+      } else {
+        // Smart insertion based on suggestion type
+        const insertIndex = findBestInsertionPoint(lines, suggestion);
+        lines.splice(insertIndex, 0, suggestion.code_snippet);
+      }
+    }
+
+    return lines.join('\n');
+  };
+
+  // Find best insertion point for code snippet
+  const findBestInsertionPoint = (lines, suggestion) => {
+    // Simple heuristic: insert at the end for now
+    // Could be enhanced with more sophisticated logic
+    return lines.length;
+  };
+
+  // Generate changes summary
+  const generateChangesSummary = (original, modified) => {
+    const originalLines = original.split('\n');
+    const modifiedLines = modified.split('\n');
+
+    return {
+      lines_added: Math.max(0, modifiedLines.length - originalLines.length),
+      lines_removed: Math.max(0, originalLines.length - modifiedLines.length),
+      lines_modified: Math.min(originalLines.length, modifiedLines.length),
+      total_changes: Math.abs(modifiedLines.length - originalLines.length)
+    };
   };
 
   // Get icon for suggestion type
@@ -410,6 +602,25 @@ export default function AISuggestionProvider({
                 <span className="text-sm font-medium text-blue-700">Analyzing...</span>
               </div>
             )}
+
+            {/* Cache Status Indicator */}
+            {suggestions.length > 0 && suggestions[0]?.cached && (
+              <Badge variant="outline" className="flex items-center space-x-1 bg-green-50 text-green-700 border-green-200">
+                <Clock className="w-3 h-3" />
+                <span className="text-xs font-medium">Cached</span>
+              </Badge>
+            )}
+
+            {/* AI Provider Indicator */}
+            {suggestions.length > 0 && suggestions[0]?.provider && (
+              <Badge variant="outline" className="flex items-center space-x-1 bg-purple-50 text-purple-700 border-purple-200">
+                <Brain className="w-3 h-3" />
+                <span className="text-xs font-medium">
+                  {suggestions[0].provider === 'demo' ? 'Demo Mode' : `${suggestions[0].provider}/${suggestions[0].model}`}
+                </span>
+              </Badge>
+            )}
+
             <Badge variant="secondary" className="flex items-center space-x-1 bg-blue-100 text-blue-800 border-blue-200">
               <Sparkles className="w-3 h-3" />
               <span className="font-medium">{filteredSuggestions.length} active</span>
@@ -468,7 +679,7 @@ export default function AISuggestionProvider({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => analyzecode(code)}
+            onClick={() => analyzecode(code, true)}
             disabled={isLoading}
             className="text-xs font-medium border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50"
           >
@@ -645,6 +856,34 @@ export default function AISuggestionProvider({
                   </div>
                 )}
 
+                {/* Code Snippet Preview (when expanded) */}
+                {expandedSuggestions.has(index) && suggestion.code_snippet && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h5 className="text-sm font-semibold text-gray-800">Suggested Code:</h5>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigator.clipboard.writeText(suggestion.code_snippet)}
+                        className="text-xs text-gray-600 hover:text-gray-800"
+                      >
+                        <Copy className="w-3 h-3 mr-1" />
+                        Copy
+                      </Button>
+                    </div>
+                    <div className="bg-white border border-gray-300 rounded-md p-3 font-mono text-sm max-h-40 overflow-y-auto">
+                      <pre className="text-gray-800 whitespace-pre-wrap">
+                        {suggestion.code_snippet}
+                      </pre>
+                    </div>
+                    {suggestion.reasoning && (
+                      <p className="text-xs text-gray-600 mt-2 italic">
+                        💡 {suggestion.reasoning}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Enhanced Action Buttons */}
                 <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                   <div className="flex items-center space-x-3">
@@ -662,7 +901,7 @@ export default function AISuggestionProvider({
                       ) : (
                         <>
                           <ChevronDown className="w-4 h-4" />
-                          <span className="text-sm font-medium">Show More</span>
+                          <span className="text-sm font-medium">Show Code</span>
                         </>
                       )}
                     </Button>
@@ -705,9 +944,10 @@ export default function AISuggestionProvider({
                       onClick={() => showSuggestionDiff(suggestion)}
                       disabled={isLoading || appliedSuggestions.has(suggestion.id)}
                       className="text-sm font-medium border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 px-4 py-2"
+                      title="Preview the code changes before applying"
                     >
                       <Code2 className="w-4 h-4 mr-1.5" />
-                      Preview
+                      {isLoading ? 'Generating...' : 'Preview Changes'}
                     </Button>
 
                     <Button
@@ -719,6 +959,10 @@ export default function AISuggestionProvider({
                           ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
                           : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg'
                       } disabled:opacity-50`}
+                      title={appliedSuggestions.has(suggestion.id)
+                        ? 'This suggestion has been applied'
+                        : `Apply this ${suggestion.type} improvement to your code`
+                      }
                     >
                       {appliedSuggestions.has(suggestion.id) ? (
                         <>
@@ -759,7 +1003,7 @@ export default function AISuggestionProvider({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => analyzecode(code)}
+            onClick={() => analyzecode(code, true)}
             disabled={isLoading}
             className="w-full font-medium border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50"
           >

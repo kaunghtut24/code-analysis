@@ -156,12 +156,45 @@ export default function DiffViewer({
       {/* Suggestion Description */}
       {suggestion && suggestion.description && (
         <div className="p-4 bg-blue-50 border-b">
-          <p className="text-sm text-blue-800">
-            <strong>Improvement:</strong> {suggestion.description}
-          </p>
-          {suggestion.reasoning && (
-            <p className="text-xs text-blue-600 mt-1">
-              <strong>Reasoning:</strong> {suggestion.reasoning}
+          <div className="flex items-start space-x-4">
+            <div className="flex-1">
+              <p className="text-sm text-blue-800 mb-2">
+                <strong>Improvement:</strong> {suggestion.description}
+              </p>
+              {suggestion.reasoning && (
+                <p className="text-xs text-blue-600">
+                  <strong>Reasoning:</strong> {suggestion.reasoning}
+                </p>
+              )}
+            </div>
+            {suggestion.confidence && (
+              <div className="bg-blue-100 px-3 py-1 rounded-full">
+                <span className="text-xs font-medium text-blue-800">
+                  {Math.round(suggestion.confidence * 100)}% confidence
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Code Snippet Preview */}
+      {suggestion && suggestion.code_snippet && (
+        <div className="p-4 bg-green-50 border-b">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-semibold text-green-800">Suggested Code:</h4>
+            <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
+              {suggestion.type || 'improvement'}
+            </span>
+          </div>
+          <div className="bg-white border border-green-200 rounded-md p-3 font-mono text-sm">
+            <pre className="text-green-800 whitespace-pre-wrap overflow-x-auto">
+              {suggestion.code_snippet}
+            </pre>
+          </div>
+          {suggestion.line && (
+            <p className="text-xs text-green-600 mt-2">
+              📍 Applies to line {suggestion.line}
             </p>
           )}
         </div>

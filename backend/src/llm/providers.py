@@ -51,18 +51,15 @@ DEFAULT_PROVIDERS = {
     'ollama': {
         'name': 'Ollama (Local)',
         'models': [
-            'llama3.2:3b',
-            'llama3.2:1b',
-            'llama3.1:8b',
-            'llama3.1:70b',
-            'codellama:7b',
-            'codellama:13b',
-            'mistral:7b',
-            'phi3:mini',
-            'qwen2.5:7b',
-            'deepseek-coder:6.7b'
+            'qwen3:latest',
+            'llama3:8b',
+            'deepseek-coder-v2:latest',
+            'deepseek-r1:14b',
+            'qwen3:4b',
+            'gemma3:latest',
+            'phi3.5:latest'
         ],
-        'default_model': 'llama3.2:3b',
+        'default_model': 'qwen3:latest',
         'api_key_env': None,  # Ollama doesn't need API key
         'base_url': 'http://localhost:11434/v1',
         'allow_custom': True

@@ -14,7 +14,7 @@ from src.routes.llm import llm_bp
 # Load environment variables
 load_dotenv()
 
-app = Flask(__name__, static_folder=os.path.join(os.path.dirname(os.path.dirname(__file__)), 'frontend', 'dist'))
+app = Flask(__name__, static_folder=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'frontend', 'dist'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 
 # Enable CORS for all routes
