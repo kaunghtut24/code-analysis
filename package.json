@@ -1,0 +1,40 @@
+{
+  "name": "ai-code-assistant",
+  "version": "2.1.0",
+  "description": "AI-powered code analysis and assistance tool with local and cloud AI support",
+  "main": "backend/src/main.py",
+  "scripts": {
+    "build:railway": "cd frontend && npm ci && npm run build",
+    "start": "python backend/src/main.py",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && python src/main.py",
+    "install:all": "cd frontend && npm install && cd ../backend && pip install -r requirements.txt",
+    "build:frontend": "cd frontend && npm run build",
+    "test:api": "python test_api_endpoints.py",
+    "test:integration": "python test_frontend_backend_integration.py"
+  },
+  "keywords": [
+    "ai",
+    "code-analysis",
+    "assistant",
+    "ollama",
+    "openai",
+    "flask",
+    "react",
+    "vite"
+  ],
+  "author": "AI Code Assistant Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.11.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kaunghtut24/code-analysis.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kaunghtut24/code-analysis/issues"
+  },
+  "homepage": "https://github.com/kaunghtut24/code-analysis#readme"
+}

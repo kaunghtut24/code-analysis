@@ -1,0 +1,60 @@
+# Multi-stage build for AI Code Assistant
+FROM node:18-alpine AS frontend-builder
+
+# Set working directory for frontend
+WORKDIR /app/frontend
+
+# Copy frontend package files
+COPY frontend/package*.json ./
+
+# Install frontend dependencies
+RUN npm ci --only=production
+
+# Copy frontend source
+COPY frontend/ ./
+
+# Build frontend
+RUN npm run build
+
+# Python backend stage
+FROM python:3.11-slim AS backend
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app/backend/src
+ENV FLASK_ENV=production
+ENV NODE_ENV=production
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy backend requirements
+COPY backend/requirements.txt ./backend/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r backend/requirements.txt
+
+# Copy backend source
+COPY backend/ ./backend/
+
+# Copy built frontend from previous stage
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+
+# Create database directory
+RUN mkdir -p /app/backend/database
+
+# Expose port
+EXPOSE 5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5000/api/llm/providers || exit 1
+
+# Start command
+CMD ["python", "backend/src/main.py"]

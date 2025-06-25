@@ -62,7 +62,8 @@ DEFAULT_PROVIDERS = {
         'default_model': 'qwen3:latest',
         'api_key_env': None,  # Ollama doesn't need API key
         'base_url': 'http://localhost:11434/v1',
-        'allow_custom': True
+        'allow_custom': True,
+        'cloud_available': False  # Not available in cloud deployment
     },
     'custom': {
         'name': 'Custom Provider',
@@ -179,4 +180,31 @@ def get_model_context_limits():
         'claude-3-sonnet': 200000,
         'claude-3-opus': 200000,
         'claude-3-haiku': 200000
+    }
+
+def get_providers():
+    """Get all available LLM providers and their configurations"""
+    import os
+
+    # Filter providers based on deployment environment
+    available_providers = {}
+    is_cloud_deployment = os.getenv('RAILWAY_ENVIRONMENT') or os.getenv('DATABASE_URL')
+
+    for provider_id, provider_config in DEFAULT_PROVIDERS.items():
+        # Skip Ollama in cloud deployment unless explicitly enabled
+        if provider_id == 'ollama' and is_cloud_deployment:
+            if not provider_config.get('cloud_available', False):
+                continue
+
+        available_providers[provider_id] = provider_config
+
+    # Set default provider based on environment
+    default_provider = 'openai'  # Default to OpenAI
+    if not is_cloud_deployment:
+        default_provider = 'ollama'  # Use Ollama locally if available
+
+    return {
+        'providers': available_providers,
+        'default_provider': default_provider,
+        'environment': 'cloud' if is_cloud_deployment else 'local'
     }

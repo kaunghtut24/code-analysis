@@ -15,7 +15,9 @@ from src.routes.llm import llm_bp
 load_dotenv()
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'frontend', 'dist'))
-app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
+
+# Use environment variable for secret key in production
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
 
 # Enable CORS for all routes
 CORS(app, origins="*")
@@ -25,8 +27,17 @@ app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(github_bp, url_prefix='/api/github')
 app.register_blueprint(llm_bp, url_prefix='/api/llm')
 
-# Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), '..', 'database', 'app.db')}"
+# Database configuration - use PostgreSQL in production, SQLite in development
+database_url = os.getenv('DATABASE_URL')
+if database_url:
+    # Railway provides PostgreSQL URL
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    # Local development with SQLite
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), '..', 'database', 'app.db')}"
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 with app.app_context():
@@ -50,4 +61,7 @@ def serve(path):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Use environment variables for production deployment
+    port = int(os.getenv('PORT', 5000))
+    debug = os.getenv('FLASK_ENV') != 'production'
+    app.run(host='0.0.0.0', port=port, debug=debug)

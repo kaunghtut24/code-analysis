@@ -1,0 +1,30 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "npm run build:railway"
+  },
+  "deploy": {
+    "startCommand": "python backend/src/main.py",
+    "healthcheckPath": "/api/llm/providers",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  },
+  "environments": {
+    "production": {
+      "variables": {
+        "NODE_ENV": "production",
+        "FLASK_ENV": "production",
+        "PYTHONPATH": "/app/backend/src",
+        "DATABASE_URL": "${{DATABASE_URL}}",
+        "SECRET_KEY": "${{SECRET_KEY}}",
+        "OPENAI_API_KEY": "${{OPENAI_API_KEY}}",
+        "ANTHROPIC_API_KEY": "${{ANTHROPIC_API_KEY}}",
+        "AZURE_OPENAI_API_KEY": "${{AZURE_OPENAI_API_KEY}}",
+        "AZURE_OPENAI_ENDPOINT": "${{AZURE_OPENAI_ENDPOINT}}",
+        "GITHUB_TOKEN": "${{GITHUB_TOKEN}}"
+      }
+    }
+  }
+}
