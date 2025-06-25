@@ -51,7 +51,7 @@ Write-Status "Step 1: Creating Fly.io app..."
 Write-Host ""
 Write-Host "Please follow these prompts:" -ForegroundColor Yellow
 Write-Host "- App name: ai-code-assistant (or your preferred name)" -ForegroundColor Gray
-Write-Host "- Region: Choose closest to your users (e.g., iad for US East)" -ForegroundColor Gray
+Write-Host "- Region: Choose closest to your users (e.g. iad for US East)" -ForegroundColor Gray
 Write-Host "- PostgreSQL database: Yes" -ForegroundColor Gray
 Write-Host "- Redis: No" -ForegroundColor Gray
 Write-Host ""
@@ -69,7 +69,9 @@ Write-Host ""
 Write-Status "Step 2: Setting up environment variables..."
 
 # Generate secret key
-$secretKey = [System.Web.Security.Membership]::GeneratePassword(32, 0)
+$bytes = New-Object byte[] 32
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+$secretKey = [Convert]::ToBase64String($bytes)
 flyctl secrets set "SECRET_KEY=$secretKey" --stage
 flyctl secrets set "FLASK_ENV=production" --stage
 flyctl secrets set "NODE_ENV=production" --stage
@@ -139,4 +141,4 @@ Write-Host "  flyctl status    - Check app status" -ForegroundColor Gray
 Write-Host "  flyctl logs      - View application logs" -ForegroundColor Gray
 Write-Host "  flyctl open      - Open app in browser" -ForegroundColor Gray
 Write-Host ""
-Write-Host "Your AI Code Assistant should now be live on Fly.io! 🚀" -ForegroundColor Green
+Write-Host "Your AI Code Assistant should now be live on Fly.io!" -ForegroundColor Green
