@@ -1,0 +1,57 @@
+# Fly.io Configuration for AI Code Assistant
+app = "ai-code-assistant"
+primary_region = "iad"
+kill_signal = "SIGINT"
+kill_timeout = "5s"
+
+[experimental]
+  auto_rollback = true
+
+[build]
+  dockerfile = "Dockerfile.flyio"
+
+[env]
+  FLASK_ENV = "production"
+  NODE_ENV = "production"
+  PYTHONPATH = "/app/backend/src"
+
+[http_service]
+  internal_port = 5000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/api/llm/providers"
+    protocol = "http"
+    timeout = "5s"
+    tls_skip_verify = false
+
+[machine]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[deploy]
+  release_command = "python backend/src/init_db.py"
+
+[[statics]]
+  guest_path = "/app/frontend/dist"
+  url_prefix = "/static/"
+
+[processes]
+  app = "python backend/src/main.py"
+
+[metrics]
+  port = 9091
+  path = "/metrics"

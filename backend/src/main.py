@@ -64,4 +64,11 @@ if __name__ == '__main__':
     # Use environment variables for production deployment
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_ENV') != 'production'
+
+    # Fly.io specific configuration
+    if os.getenv('FLY_APP_NAME'):
+        print(f"🚀 Starting AI Code Assistant on Fly.io (app: {os.getenv('FLY_APP_NAME')})")
+        print(f"🌐 Region: {os.getenv('FLY_REGION', 'unknown')}")
+        print(f"🔧 Environment: {os.getenv('FLASK_ENV', 'development')}")
+
     app.run(host='0.0.0.0', port=port, debug=debug)
