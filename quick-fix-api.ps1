@@ -20,8 +20,11 @@ Start-Sleep -Seconds 20
 Write-Host "Step 3: Testing API..." -ForegroundColor Cyan
 
 try {
-    $appInfo = flyctl info --json | ConvertFrom-Json
-    $hostname = $appInfo.Hostname
+    $statusOutput = flyctl status
+    $hostname = ($statusOutput | Select-String "Hostname\s*=\s*(.+)" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    if (-not $hostname) {
+        $hostname = ($statusOutput | Select-String "Hostname:\s*(.+)" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    }
     
     # Test chat endpoint
     $testPayload = @{

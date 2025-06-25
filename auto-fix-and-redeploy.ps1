@@ -34,11 +34,28 @@ Write-Status "Step 1: Diagnosing current application state..."
 
 # Get app info
 try {
-    $appInfo = flyctl info --json | ConvertFrom-Json
-    $appName = $appInfo.Name
-    $hostname = $appInfo.Hostname
-    Write-Success "App: $appName"
-    Write-Success "URL: https://$hostname"
+    $statusOutput = flyctl status
+    $appName = ($statusOutput | Select-String "App\s*=\s*(.+)" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $hostname = ($statusOutput | Select-String "Hostname\s*=\s*(.+)" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+
+    if (-not $appName) {
+        # Try alternative parsing
+        $appName = ($statusOutput | Select-String "Name:\s*(.+)" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    }
+    if (-not $hostname) {
+        # Try alternative parsing
+        $hostname = ($statusOutput | Select-String "Hostname:\s*(.+)" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    }
+
+    if ($appName) {
+        Write-Success "App: $appName"
+    }
+    if ($hostname) {
+        Write-Success "URL: https://$hostname"
+    } else {
+        Write-Warning "Could not determine hostname, will use app name"
+        $hostname = "$appName.fly.dev"
+    }
 }
 catch {
     Write-Error "Could not get app information"
