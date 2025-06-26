@@ -44,8 +44,14 @@ def analyze_code(data):
     if not code:
         raise ValueError('Code content required')
 
-    if not api_key and provider != 'ollama':
-        raise ValueError('API key required. Please configure your API key in Settings.')
+    # API key handling:
+    # - Ollama: No API key needed
+    # - Standard providers (openai, anthropic, azure): Can use environment variables if no API key provided
+    # - Custom providers: Must provide API key in request
+    if provider == 'custom' and not api_key:
+        raise ValueError('API key required for custom providers. Please configure your API key in Settings.')
+
+    # For standard providers, let get_llm handle environment variable fallback
 
     # Check code length and adjust max_tokens accordingly
     code_length = len(code)
