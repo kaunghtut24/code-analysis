@@ -19,11 +19,14 @@ def handle_chat_followup(data):
     if not message:
         raise ValueError('Message required')
     
-    # Allow api_key to be None - get_llm will handle environment variable fallback
-    # Only check for Ollama since it doesn't need an API key
-    if not api_key and provider != 'ollama':
-        # Try to get from environment in get_llm, don't fail here
-        pass
+    # API key handling:
+    # - Ollama: No API key needed
+    # - Standard providers (openai, anthropic, azure): Can use environment variables if no API key provided
+    # - Custom providers: Must provide API key in request
+    if provider == 'custom' and not api_key:
+        raise ValueError('API key required for custom providers. Please configure your API key in Settings.')
+
+    # For standard providers, let get_llm handle environment variable fallback
     
     llm = get_llm(
         provider=provider,
