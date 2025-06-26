@@ -551,7 +551,14 @@ export default function CodeCanvas({ setSidebarOpen }) {
     if (!apiKey && provider !== "ollama") {
       return "API key required";
     }
-    return `${provider}/${settings.selectedModel}`;
+
+    // Use the same logic as codeCanvasService for model selection
+    const baseModel = settings.selectedModel;
+    const customModel = settings.customModel;
+    const useCustomModel = settings.useCustomModel;
+    const actualModel = useCustomModel && customModel ? customModel : baseModel;
+
+    return `${provider}/${actualModel}`;
   };
 
   // Get layout button icon

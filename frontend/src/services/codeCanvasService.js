@@ -805,7 +805,7 @@ Please provide ONLY the improved code without explanations. Ensure the code foll
         : await makeRequest();
 
       return {
-        suggestions: this.parseSmartSuggestions(response.response || response.message),
+        suggestions: this.parseSmartSuggestions(response.analysis || response.response || response.message),
         session_id: response.session_id,
       };
     } catch (error) {
@@ -862,7 +862,7 @@ Please provide ONLY the improved code without explanations. Ensure the code foll
         : await makeRequest();
 
       return {
-        hints: this.parseContextualHints(response.response || response.message),
+        hints: this.parseContextualHints(response.analysis || response.response || response.message),
         session_id: response.session_id,
       };
     } catch (error) {
@@ -876,6 +876,11 @@ Please provide ONLY the improved code without explanations. Ensure the code foll
 
   // Parse smart suggestions from AI response
   static parseSmartSuggestions(text) {
+    if (!text || typeof text !== 'string') {
+      console.warn('Invalid text provided to parseSmartSuggestions:', text);
+      return [];
+    }
+
     const suggestions = [];
     const lines = text.split('\n').filter(line => line.trim());
 
@@ -894,6 +899,11 @@ Please provide ONLY the improved code without explanations. Ensure the code foll
 
   // Parse contextual hints from AI response
   static parseContextualHints(text) {
+    if (!text || typeof text !== 'string') {
+      console.warn('Invalid text provided to parseContextualHints:', text);
+      return [];
+    }
+
     const hints = [];
     const lines = text.split('\n').filter(line => line.trim());
 
