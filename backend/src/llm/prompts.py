@@ -304,6 +304,48 @@ Code to analyze for security:
 Code to optimize for performance:
 ```
 {code}
+```""",
+
+    'smart_suggestions': """Analyze this code and provide smart, contextual suggestions for improvements, optimizations, and best practices. Focus on practical, actionable advice that can be immediately applied.
+
+**Provide suggestions for:**
+- Code quality improvements
+- Performance optimizations
+- Best practice implementations
+- Refactoring opportunities
+- Modern language features usage
+
+Code to analyze:
+```
+{code}
+```""",
+
+    'contextual_hints': """Provide contextual hints and tips for this code. Focus on language-specific best practices, common patterns, and helpful insights that would benefit a developer working with this code.
+
+**Include hints about:**
+- Language-specific idioms and patterns
+- Common pitfalls to avoid
+- Useful shortcuts and techniques
+- Related concepts and tools
+- Learning opportunities
+
+Code to provide hints for:
+```
+{code}
+```""",
+
+    'code_improvement': """Analyze this code and provide specific improvements while maintaining its original functionality. Focus on making the code cleaner, more efficient, and more maintainable.
+
+**Improvement areas:**
+- Code structure and organization
+- Error handling and edge cases
+- Performance optimizations
+- Readability and maintainability
+- Modern best practices
+
+Code to improve:
+```
+{code}
 ```"""
 }
 
@@ -314,5 +356,8 @@ SYSTEM_INSTRUCTIONS = {
     'improve': "You are a software architect and performance expert. Focus on modernization, optimization, and best practices. Prioritize improvements by impact and provide before/after code examples.",
     'correct': "You are a code correction specialist. Provide complete, working corrected code with detailed explanations. Focus on fixing all issues while maintaining functionality.",
     'security': "You are a cybersecurity expert specializing in secure code review. Identify vulnerabilities with CVSS scores where applicable and provide secure implementations.",
-    'performance': "You are a performance optimization expert. Analyze algorithmic efficiency, memory usage, and provide quantifiable improvement recommendations with benchmarking guidance."
+    'performance': "You are a performance optimization expert. Analyze algorithmic efficiency, memory usage, and provide quantifiable improvement recommendations with benchmarking guidance.",
+    'smart_suggestions': "You are a senior software engineer providing smart, contextual suggestions. Focus on practical improvements, optimizations, and best practices that can be immediately applied.",
+    'contextual_hints': "You are a coding mentor providing helpful hints and tips. Focus on language-specific best practices, common patterns, and educational insights.",
+    'code_improvement': "You are a code improvement specialist. Provide specific, actionable improvements for the given code while maintaining its original functionality."
 }

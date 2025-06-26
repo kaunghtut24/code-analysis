@@ -370,12 +370,12 @@ export class CodeCanvasService {
       const isLocal = !this.requiresApiKey(config.provider);
       console.log(`🤖 Making ${isLocal ? 'local' : 'cloud'} AI API call for code improvement (${config.provider}/${config.model})`);
 
-      // Create language-specific improvement prompt
-      const improvePrompt = this.createImprovementPrompt(improvementText, selection, language);
-
       // Use queue for Ollama to prevent concurrent request issues
       const requestData = {
-        message: improvePrompt,
+        code: selection || code,
+        type: 'code_improvement',
+        language: language,
+        improvement_text: improvementText,
         session_id: `improve_${Date.now()}`,
         ...config,
       };
@@ -773,10 +773,10 @@ Please provide ONLY the improved code without explanations. Ensure the code foll
         };
       }
 
-      const smartPrompt = `Analyze this ${language} code and provide smart, contextual suggestions for improvements, optimizations, and best practices. Focus on practical, actionable advice:\n\n${code}`;
-
       const requestData = {
-        message: smartPrompt,
+        code: code,
+        type: 'smart_suggestions',
+        language: language,
         session_id: `smart_${Date.now()}`,
         ...config,
       };
@@ -830,10 +830,10 @@ Please provide ONLY the improved code without explanations. Ensure the code foll
         };
       }
 
-      const hintPrompt = `Provide contextual hints and tips for this ${language} code. Focus on language-specific best practices, common patterns, and helpful shortcuts:\n\n${code}`;
-
       const requestData = {
-        message: hintPrompt,
+        code: code,
+        type: 'contextual_hints',
+        language: language,
         session_id: `hints_${Date.now()}`,
         ...config,
       };
