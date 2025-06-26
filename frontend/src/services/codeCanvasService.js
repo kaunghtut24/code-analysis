@@ -381,7 +381,7 @@ export class CodeCanvasService {
       };
 
       const makeRequest = async () => {
-        return await apiRequest("/api/llm/chat", {
+        return await apiRequest("/api/llm/analyze", {
           method: "POST",
           body: JSON.stringify(requestData),
         });
@@ -794,7 +794,7 @@ Please provide ONLY the improved code without explanations. Ensure the code foll
 
       // Use queue for Ollama to prevent concurrent request issues
       const makeRequest = async () => {
-        return await apiRequest("/api/llm/chat", {
+        return await apiRequest("/api/llm/analyze", {
           method: "POST",
           body: JSON.stringify(requestData),
         });
@@ -851,7 +851,7 @@ Please provide ONLY the improved code without explanations. Ensure the code foll
 
       // Use queue for Ollama to prevent concurrent request issues
       const makeRequest = async () => {
-        return await apiRequest("/api/llm/chat", {
+        return await apiRequest("/api/llm/analyze", {
           method: "POST",
           body: JSON.stringify(requestData),
         });
